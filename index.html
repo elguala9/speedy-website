@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Speedy — Local Semantic File System for AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #08080f;
+  --surface: #0e0d1a;
+  --surface2: #13111f;
+  --border: #1e1c2e;
+  --border-bright: #2d2a42;
+  --pink: #f472b6;
+  --pink-dim: rgba(244,114,182,0.15);
+  --pink-glow: rgba(244,114,182,0.08);
+  --violet: #a78bfa;
+  --violet-dim: rgba(167,139,250,0.15);
+  --violet-glow: rgba(167,139,250,0.08);
+  --cyan: #67e8f9;
+  --text: #e2dff0;
+  --text-muted: #6e6a88;
+  --text-dim: #3a3852;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'Outfit', sans-serif;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-weight: 300;
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(167,139,250,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(167,139,250,0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: -200px;
+  right: -100px;
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle, rgba(244,114,182,0.06) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.glow-left {
+  position: fixed;
+  bottom: -150px;
+  left: -100px;
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle, rgba(167,139,250,0.07) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.container {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  position: relative;
+  z-index: 1;
+}
+
+nav {
+  padding: 1.4rem 0;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+  z-index: 2;
+}
+nav .inner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.logo {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(90deg, var(--pink), var(--violet));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.logo-icon {
+  width: 28px; height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, var(--pink), var(--violet));
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  -webkit-text-fill-color: initial;
+}
+.logo-icon svg { width: 14px; height: 14px; }
+
+.nav-badge {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid var(--border-bright);
+  padding: 4px 12px;
+  border-radius: 20px;
+  letter-spacing: 0.04em;
+}
+
+.hero { padding: 7rem 0 4.5rem; position: relative; }
+
+.hero-eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--pink);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 1.8rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.1s ease forwards;
+}
+.hero-eyebrow::before {
+  content: '';
+  width: 20px; height: 1px;
+  background: var(--pink);
+}
+
+h1 {
+  font-family: var(--mono);
+  font-size: clamp(2rem, 5vw, 3.2rem);
+  font-weight: 600;
+  line-height: 1.12;
+  color: var(--text);
+  margin-bottom: 1.6rem;
+  letter-spacing: -0.02em;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.2s ease forwards;
+}
+h1 .ap { color: var(--pink); }
+h1 .av { color: var(--violet); }
+
+.hero-sub {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  max-width: 560px;
+  line-height: 1.75;
+  margin-bottom: 2.8rem;
+  font-weight: 300;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.3s ease forwards;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: none; }
+}
+
+.hero-cta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  opacity: 0;
+  animation: fadeUp 0.6s 0.4s ease forwards;
+}
+
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, var(--pink), var(--violet));
+  color: #fff;
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  padding: 13px 26px;
+  border-radius: 4px;
+  transition: opacity 0.15s, transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 24px rgba(244,114,182,0.25);
+}
+.btn-download:hover {
+  opacity: 0.88;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 32px rgba(244,114,182,0.4);
+}
+.btn-download:active { transform: translateY(0); }
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  font-size: 12px;
+  text-decoration: none;
+  padding: 13px 20px;
+  border: 1px solid var(--border-bright);
+  border-radius: 4px;
+  transition: color 0.15s, border-color 0.15s;
+  letter-spacing: 0.04em;
+}
+.btn-ghost:hover { color: var(--violet); border-color: rgba(167,139,250,0.5); }
+
+.stats {
+  margin-top: 4.5rem;
+  padding-top: 2.5rem;
+  border-top: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  opacity: 0;
+  animation: fadeUp 0.6s 0.55s ease forwards;
+}
+.stat {
+  padding: 0.8rem 0;
+  border-right: 1px solid var(--border);
+}
+.stat:last-child { border-right: none; }
+.stat:not(:first-child) { padding-left: 2rem; }
+.stat-val {
+  font-family: var(--mono);
+  font-size: 1.7rem;
+  font-weight: 600;
+  line-height: 1;
+  margin-bottom: 5px;
+}
+.stat-val.p { color: var(--pink); }
+.stat-val.v { color: var(--violet); }
+.stat-val.c { color: var(--cyan); }
+.stat-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.section { padding: 5rem 0; border-top: 1px solid var(--border); }
+
+.section-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  margin-bottom: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.steps { display: flex; flex-direction: column; }
+.step {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  gap: 1.5rem;
+  padding: 1.8rem 0;
+  border-bottom: 1px solid var(--border);
+  align-items: start;
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 0.5s, transform 0.5s;
+}
+.step:last-child { border-bottom: none; }
+.step.visible { opacity: 1; transform: none; }
+
+.step-num {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  padding-top: 2px;
+  letter-spacing: 0.1em;
+}
+.step-content h3 {
+  font-family: var(--mono);
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  letter-spacing: 0.02em;
+}
+.step-content h3.p { color: var(--pink); }
+.step-content h3.v { color: var(--violet); }
+.step-content p { font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+
+.agents-grid { display: flex; flex-wrap: wrap; gap: 10px; }
+.agent-tag {
+  font-family: var(--mono);
+  font-size: 12px;
+  padding: 7px 16px;
+  border-radius: 3px;
+  letter-spacing: 0.04em;
+  border: 1px solid;
+  transition: background 0.15s;
+}
+.agent-tag.p { color: var(--pink); border-color: rgba(244,114,182,0.3); background: var(--pink-glow); }
+.agent-tag.p:hover { background: var(--pink-dim); }
+.agent-tag.v { color: var(--violet); border-color: rgba(167,139,250,0.3); background: var(--violet-glow); }
+.agent-tag.v:hover { background: var(--violet-dim); }
+.agent-tag.n { color: var(--text-muted); border-color: var(--border-bright); background: transparent; }
+
+.terminal {
+  background: var(--surface);
+  border: 1px solid var(--border-bright);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 2.5rem;
+}
+.terminal-bar {
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.t-dot { width: 10px; height: 10px; border-radius: 50%; }
+.t-dot:nth-child(1) { background: rgba(244,114,182,0.7); }
+.t-dot:nth-child(2) { background: rgba(167,139,250,0.7); }
+.t-dot:nth-child(3) { background: rgba(103,232,249,0.5); }
+.terminal-body { padding: 1.4rem 1.6rem; font-family: var(--mono); font-size: 13px; line-height: 1.9; }
+.t-comment { color: var(--text-dim); }
+.t-cmd { color: var(--text-muted); }
+.t-cmd .p { color: var(--pink); }
+.t-cmd .v { color: var(--violet); }
+.t-cmd .c { color: var(--cyan); }
+
+.bottom-cta {
+  padding: 5rem 0 6rem;
+  text-align: center;
+  border-top: 1px solid var(--border);
+}
+.bottom-cta h2 {
+  font-family: var(--mono);
+  font-size: clamp(1.4rem, 3vw, 2rem);
+  font-weight: 600;
+  margin-bottom: 1rem;
+  background: linear-gradient(90deg, var(--pink), var(--violet));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.bottom-cta p {
+  color: var(--text-muted);
+  font-size: 15px;
+  margin-bottom: 2rem;
+  max-width: 440px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+footer { border-top: 1px solid var(--border); padding: 1.8rem 0; }
+footer .inner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+footer p { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.05em; }
+footer a { color: var(--text-dim); text-decoration: none; transition: color 0.15s; }
+footer a:hover { color: var(--violet); }
+</style>
+</head>
+<body>
+<div class="glow-left"></div>
+
+<nav>
+  <div class="inner">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M2 7L5 10L12 3" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      Speedy
+    </div>
+    <span class="nav-badge">v0.1.0 — alpha</span>
+  </div>
+</nav>
+
+<div class="container">
+
+  <section class="hero">
+    <div class="hero-eyebrow">MCP Server · Local AI Memory</div>
+    <h1>
+      <span class="ap">Semantic</span> search<br>for your <span class="av">codebase</span>.
+    </h1>
+    <p class="hero-sub">
+      Speedy indexes your projects into a lightning-fast local vector database, watches for changes in real time, and exposes semantic search directly to your AI coding agents. No cloud. No subscriptions.
+    </p>
+    <div class="hero-cta">
+      <a href="https://github.com/elguala9/Speedy/releases" class="btn-download">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 12h10" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download
+      </a>
+      <a href="https://github.com/elguala9/Speedy" class="btn-ghost">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+        GitHub
+      </a>
+    </div>
+
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-val p">100%</div>
+        <div class="stat-label">Local — no cloud</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val v">SQLite</div>
+        <div class="stat-label">Vector store</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val c">MCP</div>
+        <div class="stat-label">Protocol ready</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">How it works</div>
+    <div class="steps">
+      <div class="step">
+        <span class="step-num">01</span>
+        <div class="step-content">
+          <h3 class="p">Index once, search forever</h3>
+          <p>Speedy chunks and embeds your entire codebase into a local SQLite vector store powered by Ollama. Fully offline, no API keys required.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">02</span>
+        <div class="step-content">
+          <h3 class="v">Always up to date</h3>
+          <p>A single lightweight daemon watches all your workspaces and updates the index the moment files change — no manual re-indexing needed.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">03</span>
+        <div class="step-content">
+          <h3 class="p">Plug into any AI agent</h3>
+          <p>An MCP server lets Claude Code, Cursor, Windsurf, and other agents query your code semantically — getting smarter, more relevant context with every request.</p>
+        </div>
+      </div>
+      <div class="step">
+        <span class="step-num">04</span>
+        <div class="step-content">
+          <h3 class="v">Desktop GUI included</h3>
+          <p>Manage workspaces, monitor the daemon, and inspect live logs from a clean native interface. No terminal required to get started.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">Compatible agents</div>
+    <div class="agents-grid">
+      <span class="agent-tag p">Claude Code</span>
+      <span class="agent-tag v">Cursor</span>
+      <span class="agent-tag p">Windsurf</span>
+      <span class="agent-tag v">Continue.dev</span>
+      <span class="agent-tag n">Any MCP-compatible agent</span>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-bar">
+        <div class="t-dot"></div>
+        <div class="t-dot"></div>
+        <div class="t-dot"></div>
+      </div>
+      <div class="terminal-body">
+        <div class="t-comment"># add to your claude_desktop_config.json</div>
+        <div class="t-cmd">{</div>
+        <div class="t-cmd">&nbsp;&nbsp;<span class="p">"mcpServers"</span>: {</div>
+        <div class="t-cmd">&nbsp;&nbsp;&nbsp;&nbsp;<span class="v">"speedy"</span>: {</div>
+        <div class="t-cmd">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="p">"command"</span>: <span class="c">"speedy-mcp"</span></div>
+        <div class="t-cmd">&nbsp;&nbsp;&nbsp;&nbsp;}</div>
+        <div class="t-cmd">&nbsp;&nbsp;}</div>
+        <div class="t-cmd">}</div>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<section class="bottom-cta">
+  <div class="container">
+    <h2>Ready to give your AI agent a memory?</h2>
+    <p>Download Speedy and bring semantic search to your local codebase in minutes.</p>
+    <a href="https://github.com/elguala9/Speedy/releases" class="btn-download" style="display:inline-flex;">
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v8M5 7l3 3 3-3M3 12h10" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Download Speedy
+    </a>
+  </div>
+</section>
+
+<footer>
+  <div class="inner">
+    <p>© 2026 Speedy — Local Semantic File System</p>
+    <p><a href="https://github.com/elguala9/Speedy">github.com/elguala9/Speedy</a></p>
+  </div>
+</footer>
+
+<script>
+  const steps = document.querySelectorAll('.step');
+  const io = new IntersectionObserver(entries => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('visible'), i * 80);
+      }
+    });
+  }, { threshold: 0.15 });
+  steps.forEach(s => io.observe(s));
+</script>
+</body>
+</html>
